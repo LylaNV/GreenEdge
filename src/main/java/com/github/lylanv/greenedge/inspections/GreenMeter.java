@@ -1,0 +1,482 @@
+package com.github.lylanv.greenedge.inspections;
+
+import com.intellij.ide.highlighter.JavaFileType;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.*;
+import com.intellij.psi.codeStyle.CodeStyleManager;
+import com.intellij.psi.javadoc.PsiDocComment;
+import com.intellij.psi.search.FileTypeIndex;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.util.indexing.FileBasedIndex;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collection;
+
+public class GreenMeter extends AnAction {
+
+    Project project; //Holds the project
+    PsiParserFacade parserFacade; //Holds the PsiParserFacade
+    Editor editor; //Holds the editor
+    PsiFile psiFile; //Holds PsiFile
+    PsiManager psiManager; //Holds PsiManager
+    Collection<VirtualFile> containingFiles; //Holds virtual files in the project
+    PsiClass[] psiClasses; //Holds the classes in the project
+    PsiMethod[] psiMethods; //Holds the list of the methods in the project
+    PsiElementFactory factory; //Holds PsiElementFactory
+    PsiAnnotation annotation; //Holds annotation
+    PsiDirectory projectDirectory; //Holds the project directory
+    ImportChecker importChecker; //Holds an instance of ImportChecker class -> this variable is used to check the list of the imports in the project and add any missing one
+    Boolean importStatementNeeded; //Determines if there is any missing import
+    private final String Logging_TAG = "MethodCallProfiler"; //A TAG that we use in adding logs, so we can differentiate our added logs from rest of logs
+
+    public static Singleton singleton; //Holds none changeable and needed variables by other classes such as project
+
+    String START_OF_METHOD_ANNOTATION_CLASS = "StartOfMethod"; //Holds annotation text
+
+
+    @Override
+    public void actionPerformed(@NotNull AnActionEvent event) {
+
+        System.out.println("[GreenMeter -> actionPerformed$ GreenMeter button is clicked");
+
+        //Gets the project
+        project = event.getData(PlatformDataKeys.PROJECT);
+        if (project == null) {
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: project is null");
+            return;
+        }else {
+            //TODO: Singleton is not recommended in plugin development, consider to remove it.
+            singleton = new Singleton(project);
+        }
+
+        //Initiates the importChecker -> this variable is used to check the list of the imports in the project and add any missing one
+        importChecker = new ImportChecker(project);
+        if (importChecker == null){
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: importChecker is null");
+            return;
+        }
+
+        //Gets the PsiParserFacade to be able to create white spaces elements
+        parserFacade = PsiParserFacade.getInstance(project);
+        if (parserFacade == null){
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: parserFacade is null");
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: PSI tree cannot be manipulated!");
+            return;
+        }
+
+
+        //Gets the PsiElement Factory
+        factory = JavaPsiFacade.getElementFactory(project);
+
+        //Gets the PSI manager
+        psiManager = PsiManager.getInstance(project);
+        if (psiManager == null) {
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: psiManager is null");
+            return;
+        }
+
+        //Gets the editor
+        editor = event.getData(PlatformDataKeys.EDITOR);
+        if (editor == null) {
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: editor is null");
+            return;
+        }
+
+        //Gets the psiFile
+        psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument());
+        if (psiFile == null) {
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: psiFile is null");
+            return;
+        }
+
+//        psiFile.accept(new PsiRecursiveElementWalkingVisitor() {
+//            @Override
+//            public void visitElement(PsiElement element) {
+//                super.visitElement(element);
+//
+//                // Check if the element is a semicolon token
+//                if (element instanceof LeafPsiElement) {
+//                    LeafPsiElement leaf = (LeafPsiElement) element;
+//                    if (leaf.getElementType() == JavaTokenType.SEMICOLON) {
+//                        System.out.println("Found a semicolon: " + leaf.getText());
+//                    }
+//                }
+//            }
+//        });
+
+//        PsiElementVisitor visitor = new PsiElementVisitor() {
+//            @Override
+//            public void visitElement(@NotNull PsiElement element){
+//                if (element.getNode().getElementType() == JavaTokenType.SEMICOLON){
+//                    System.out.println("[GreenMeter -> logFindViewById$ HURRRRAAAAA I FOUND A ;");
+//                }
+//            }
+//        };
+//        psiFile.accept(visitor);
+
+
+        //Gets the document
+        Document document = (Document) PsiDocumentManager.getInstance(project).getDocument(psiFile);
+        if (document == null) {
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: document is null");
+            return;
+        }
+
+//        //Gets the project directory
+//        projectDirectory = (PsiDirectory) project.getBaseDir();
+//        if (projectDirectory == null) {
+//            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: projectDirectory is null");
+//            return;
+//        }
+
+
+        //createAnnotationFile(project,projectDirectory,START_OF_METHOD_ANNOTATION_CLASS);
+
+        //Gets all the Java files in the project even the test files
+        //https://intellij-support.jetbrains.com/hc/en-us/community/posts/360009512280-Find-all-PsiClasses-in-Project
+        containingFiles = FileBasedIndex.getInstance().getContainingFiles(FileTypeIndex.NAME,
+                JavaFileType.INSTANCE,
+                GlobalSearchScope.projectScope(project));
+        if (containingFiles.toArray().length == 0) {
+            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: there is no file in the project!");
+            return;
+        }
+
+        //Gets the classes in each file in the project
+        for (VirtualFile virtualFile : containingFiles) {
+            /*
+             * By this if we exclude all java files that are not in the main folder of the project such as test files
+             * to be more precise androidTest and test
+             * Filters the Java files in the project to access the Java files with actual source code of the application
+             * */
+            if (virtualFile.getUrl().contains("/src/main")){
+                psiClasses = convertVirtualFileToPsiClass(project,virtualFile);
+                if (psiClasses.length == 0) {
+                    System.out.println("[GreenMeter -> actionPerformed$ Could not retrieve the java classes in the project or project does not have any java class.");
+                }else {
+                    //retrieveClasses(psiClasses); //Calls methods that annotate methods - WORKING
+                    //Determines if there is any missing import
+                    //Be careful, we need to first call the checkImports function then the addLogImportStatement function
+                    importStatementNeeded = importChecker.checkImports(virtualFile,psiManager);
+                    analyzeAndroidAPIs(virtualFile);
+                    //Missing imports should be added after log statements; otherwise, we will get error that we try to change the un-commited document
+                    importChecker.addLogImportStatement();
+
+                }
+            }
+        }
+    }
+
+//    private void createAnnotationFile(Project project, PsiDirectory projectDirectory, String startOfMethodAnnotationClass) {
+//        try{
+//
+//            WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {
+//
+//                PsiElementFactory myF = JavaPsiFacade.getInstance(project).getElementFactory();
+//                try {
+//                    myF.createClass("StartOfMethod.java", projectDirectory, "@interface", " ");
+//                } catch (Exception ex) {
+//                }
+//
+//            });
+//
+//
+////            //PsiFileFactory psiFileFactory = PsiFileFactory.getInstance(project);
+////            PsiElementFactory psiElementFactory = PsiElementFactory.getInstance(project);
+////            PsiClass myPsiClass = psiElementFactory.createClass("StartOfMethod");
+////            System.out.println("NEW Class is" + myPsiClass.getModifierList());
+////
+////
+////            //PsiElementFactory myfactory = JavaPsiFacade.getInstance(project).getElementFactory();
+////            PsiStatement statement = psiElementFactory.createStatementFromText("@interface", myPsiClass);
+////            //annotation = psiElementFactory.createAnnotationFromText("@interface", myPsiClass);
+////            WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {myPsiClass.getModifierList().add(annotation);});
+////            System.out.println("NEW Class is" + myPsiClass.getModifierList());
+////            //PsiFile MyPsiFile = psiFileFactory.createFileFromText(".java","StartOfMethod","test")
+////            JavaDirectoryService javaDirectoryService = JavaDirectoryService.getInstance();
+////            //JavaPackage javaPackage = (JavaPackage) javaDirectoryService.getPackage(projectDirectory);
+////            System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ javaDirectoryService is " + javaDirectoryService);
+////            //System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ javaPackage is " + javaPackage);
+////
+////            //String content = generateAnnotationClassContent(startOfMethodAnnotationClass);
+//
+//        } catch (Exception exception){
+//            System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ Fatal error: Cannot add the " + startOfMethodAnnotationClass + " annotation class to the project path.");
+//            System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ Fatal error: The reason is " + exception.getMessage());
+//        }
+//    }
+
+//    private String generateAnnotationClassContent(String startOfMethodAnnotationClass) {
+//    }
+
+
+    // This method converts VirtualFiles to psiClass
+    private static PsiClass[] convertVirtualFileToPsiClass(Project project, VirtualFile virtualFile) {
+        if (virtualFile == null) {
+            System.out.println("[GreenMeter -> actionPerformed -> convertVirtualFileToPsiClass$ Fatal error: VirtualFile is null");
+            return null;
+        }
+
+        if (!virtualFile.getName().endsWith(".java")) {
+            System.out.println("[GreenMeter -> actionPerformed -> convertVirtualFileToPsiClass$ Fatal error: VirtualFile is not Java file type");
+            return null;
+        }
+
+        PsiManager psiManager = PsiManager.getInstance(project);
+        PsiFile psiFile = psiManager.findFile(virtualFile);
+
+        if(psiFile == null || !(psiFile instanceof PsiJavaFile)) {
+            System.out.println("[GreenMeter -> actionPerformed -> convertVirtualFileToPsiClass$ Fatal error: The psiFile related to virtualFile could not be found.");
+            return null;
+        }
+
+        PsiJavaFile psiJavaFile = (PsiJavaFile) psiFile;
+        PsiClass[] classes = psiJavaFile.getClasses();
+        if (classes.length == 0) {
+            System.out.println("[GreenMeter -> actionPerformed -> convertVirtualFileToPsiClass $ Fatal error: There is no class associated to the input virtual file.");
+            return null;
+        }
+
+        return classes;
+    }
+
+//    // This method annotates methods - WORKING
+//    private void retrieveClasses(PsiClass[] psiClasses) {
+//        for (PsiClass psiClass : psiClasses) {
+//            annotateMethods(psiClass);
+//        }
+//    }
+//
+//    // This method annotates methods - WORKING
+//    private void annotateMethods(PsiClass psiClass) {
+//
+//        psiMethods = psiClass.getMethods();
+//        for (PsiMethod psiMethod : psiMethods) {
+//            System.out.println("[GreenMeter -> actionPerformed -> annotateClasses -> annotateMethods$ psiMethod is " + psiMethod);
+//            //factory = JavaPsiFacade.getElementFactory(psiMethod.getProject());
+//            annotation = factory.createAnnotationFromText("@StartOfMethod", psiMethod);
+//            //annotation = factory.createAnnotationFromText("@com.github.lylanv.greenedge.inspections.StartOfMethod", psiMethod);
+//
+//            new WriteCommandAction.Simple(project, psiMethod.getContainingFile()) {
+//                @Override
+//                protected void run() throws Throwable {
+//                    PsiModifierList modifierList = psiMethod.getModifierList();
+//                    PsiElement firstChild = modifierList.getFirstChild();
+//
+//                    if (modifierList != null) {
+//
+//                        // Gets the methods annotations list
+//                        PsiAnnotation[] annotations = modifierList.getAnnotations();
+//
+//                        // The following "if" will be executed if the method has annotations
+//                        if (annotations.length > 0) {
+//                            // Find the first child of modifierList that is not an annotation
+//                            PsiElement insertionPoint = null;
+//                            PsiElement[] children = modifierList.getChildren();
+//                            for (PsiElement child : children) {
+//                                //TODO: check if this part of the code can also detects Android specific annotations as well
+//                                if (!(child instanceof PsiAnnotation)) {
+//                                    insertionPoint = child;
+//                                    break;
+//                                }
+//                            }
+//                            if (insertionPoint != null) {
+//                                // Add the annotation before the insertion point
+//                                PsiElement finalInsertionPoint = insertionPoint;
+//                                WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {modifierList.addBefore(annotation, finalInsertionPoint);});
+//                            } else {
+//                                // If all children are annotations, add the annotation at the end of the modifier list
+//                                WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {modifierList.add(annotation);});
+//                            }
+//                        } else {
+//                            if (firstChild instanceof PsiKeyword) {
+//                                // Add the annotation before the "public" modifier
+//                                WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {modifierList.addBefore(annotation, firstChild);});
+//                            } else {
+//                                // If there is no existing modifier, or it's not a PsiKeyword, simply add the annotation to the modifier list
+//                                WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {modifierList.add(annotation);});
+//                            }
+//                        }
+//                    } else {
+//                        WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {modifierList.add(annotation);});
+//                    }
+//                }
+//            }.execute();
+//        }
+//
+//    }
+
+    // This method travers the input virtual file and finds method call
+    // and filters specific API calls and adds the proper log statements
+    private void analyzeAndroidAPIs(VirtualFile inputVirtualFile) {
+        PsiFile inputPsiFile = psiManager.findFile(inputVirtualFile);
+        if (inputPsiFile != null) {
+            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ psiFile name is " + inputPsiFile.getName());
+            inputPsiFile.accept(new JavaRecursiveElementWalkingVisitor() {
+                @Override
+                public void visitMethodCallExpression(@NotNull PsiMethodCallExpression expression) {
+                    super.visitMethodCallExpression(expression);
+
+//                    PsiExpressionList argumentList = expression.getArgumentList();
+//                    if (argumentList != null) {
+//                        PsiExpression[] arguments = argumentList.getExpressions();
+//                        if (arguments.length > 0) {
+//                            PsiExpression firstArgument = arguments[0];
+//                            PsiElement parentElement = expression.getParent();
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ firstArgument is " + firstArgument);
+//                            String test = parentElement.getText().replace(firstArgument.getText(),"");
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ parentElement is " + test);
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ expression is " + expression.getText());
+//
+//                        }
+//                    }
+
+                    String fileName = inputPsiFile.getName();
+                    String methodCallName = expression.getMethodExpression().getReferenceName();
+                    System.out.println("[GreenMeter -> analyzeAndroidAPIs$ methodCallName is " + methodCallName);
+
+                    switch (methodCallName) {
+                        case "performClick":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "getIntExtra":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "i":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "finish":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            //TODO: add the log statement before finish().
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "cancelAll":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "startActivityForResult":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "findViewById":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "getPhoneType":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "clear":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        case "getPixel":
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+                            addLogStatement(expression,methodCallName, fileName);
+                            break;
+                        default:
+                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is default");
+
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+//                                case :
+                    }
+
+
+//                    CommandProcessor.getInstance().executeCommand(project, (Runnable) () -> {
+//                        CodeStyleManager codeStyleManager = CodeStyleManager.getInstance(project);
+//                        codeStyleManager.reformat(psiFile);
+//                    },"Reformat Code",null);
+
+
+                }
+            });
+        }else {
+            System.out.println("[GreenMeter -> annotateMethods$ There is not equivalent PSI file for input virtual file.");
+        }
+    }
+
+    //This method creates and adds the log statements to the source code of the application
+    private void addLogStatement(PsiMethodCallExpression expression, String methodCallName, String javaFile) {
+        //Finds the complete method call expression (I mean the one with semicolon)
+        PsiElement parent = expression.getParent();
+        while (parent != null && !(parent instanceof PsiStatement)) {
+            parent = parent.getParent();
+        }
+
+        if (parent != null) {
+            int lineNumber; // Holds the exact line number of the API call
+            if (importStatementNeeded){
+                lineNumber = getLineNumber(parent) + 1;
+            }else {
+                lineNumber = getLineNumber(parent) + 2;
+            }
+
+            //String logStatement = "Log.d(\"" + Logging_TAG + "\", \"" + methodCallName + ", File: " + javaFile + ", Line number is " + lineNumber + "\");";
+            String logStatement = "Log.d(\"" + Logging_TAG + "\", \"(" + methodCallName + "," + javaFile + "," + lineNumber + ")\");";
+            PsiStatement logStatementElement = factory.createStatementFromText(logStatement,expression.getContext());
+
+            //The semicolon should be in one of the leaf nodes
+            PsiElement semicolon = PsiTreeUtil.nextLeaf(parent);
+
+            //Finds the semicolon which is in the end of the method call expression
+            while (semicolon != null && !(semicolon instanceof PsiJavaToken && ((PsiJavaToken) semicolon).getTokenType() == JavaTokenType.SEMICOLON)) {
+                //semicolon = PsiTreeUtil.nextLeaf(semicolon);
+                semicolon = PsiTreeUtil.prevLeaf(semicolon);
+            }
+
+            //Creates an enter/white space element
+            PsiElement emptyLine = parserFacade.createWhiteSpaceFromText("\n");
+
+            //writes the statement and the white space to the right place in the Psi tree
+            PsiElement finalInsertionPoint = semicolon.getParent();
+            PsiElement finalSemicolon = semicolon;
+            CodeStyleManager codeStyleManager = CodeStyleManager.getInstance(project);
+            WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {finalInsertionPoint.addAfter(logStatementElement,finalSemicolon);});
+            //TODO: change adding white sapace manually. We should not do that beased on: https://plugins.jetbrains.com/docs/intellij/modifying-psi.html#whitespaces-and-imports
+            WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {finalInsertionPoint.addAfter(emptyLine, finalSemicolon);});
+//            WriteCommandAction.runWriteCommandAction(project,(Runnable) () -> {codeStyleManager.reformatNewlyAddedElement((ASTNode) logStatementElement.getParent().getNode(),logStatementElement.getNode());});
+//            WriteCommandAction.runWriteCommandAction(project,(Runnable) () -> {codeStyleManager.reformatNewlyAddedElement(psiFile.getNode(), finalInsertionPoint.getNode());});
+        }else {
+            System.out.println("[GreenMeter -> logFindViewById$ Fatal error: Method call expression is null: There is not any method call!");
+        }
+    }
+
+    //This method returns the line number of the input element in the editor
+    private int getLineNumber(PsiElement element) {
+
+        int startOffset = element.getTextRange().getStartOffset();
+
+        PsiFile elementFile = element.getContainingFile();
+        if (elementFile == null){
+            return -1;
+        }else {
+            Document elementDocument = PsiDocumentManager.getInstance(elementFile.getProject()).getDocument(elementFile);
+            if (elementDocument == null){
+                return -1;
+            }else {
+                return elementDocument.getLineNumber(startOffset);
+            }
+        }
+    }
+}

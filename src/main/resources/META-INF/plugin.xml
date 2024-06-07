@@ -2,17 +2,80 @@
 <idea-plugin>
     <id>com.github.lylanv.greenedge</id>
     <name>GreenEdge</name>
-    <vendor>lylanv</vendor>
+    <vendor email="lyla.naghipour@gmail.com">lylanv</vendor>
 
+
+    <description><![CDATA[
+    This plugin helps you to measure the energy consumption of your Android applications in Android Studio.<br>
+    ]]></description>
+
+    <!-- LYLA: Changed -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.xml</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>org.jetbrains.android</depends>
+    <depends>org.intellij.intelliLang</depends>
+    <depends>com.intellij.modules.all</depends>
+    <depends>com.android.tools.idea.smali</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.lylanv.greenedge.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+<!--        <toolWindow factoryClass="com.github.lylanv.greenedge.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>-->
+        <toolWindow factoryClass="com.github.lylanv.greenedge.inspections.LogcatAnalyzerToolWindowFactory" id="GreenMeterToolWindow" anchor="bottom"/>
     </extensions>
 
+<!--    <extensions defaultExtensionNs="com.android.tools.idea.execution.common">-->
+<!--        <androidConfigurationExecutorProvider implementation="com.github.lylanv.greenedge.inspections.MyAndroidConfigurationExecutor"/>-->
+<!--    </extensions>-->
+
+
+    <actions>
+        <group
+                id="EnergyActionGroup"
+                description="Energy action group">
+            <action
+                    id="com.github.lylanv.greenedge.inspections.GreenMeter"
+                    class="com.github.lylanv.greenedge.inspections.GreenMeter"
+                    text="Green Meter"
+                    description="Energy profiler button"/>
+<!--            <action-->
+<!--                    id="com.github.lylanv.greenedge.inspections.MyAnnotator"-->
+<!--                    class="com.github.lylanv.greenedge.inspections.MyAnnotator"-->
+<!--                    text="MyAnnotatorr"-->
+<!--                    description="Energy profiler button"/>-->
+<!--            <action-->
+<!--                    id="com.github.lylanv.greenedge.inspections.MethodLoggingPlugin"-->
+<!--                    class="com.github.lylanv.greenedge.inspections.MethodLoggingPlugin"-->
+<!--                    text="MethodLoggingPlugin"-->
+<!--                    description="Method call logger button"/>-->
+<!--            <action-->
+<!--                    id="com.github.lylanv.greenedge.actions.EnergyAction"-->
+<!--                    class="com.github.lylanv.greenedge.actions.EnergyAction"-->
+<!--                    text="Energy Profiler"-->
+<!--                    description="Energy profiler button"/>-->
+<!--            <action-->
+<!--                    id="com.github.lylanv.greenedge.inspections.MethodCallAction"-->
+<!--                    class="com.github.lylanv.greenedge.inspections.MethodCallAction"-->
+<!--                    text="MethodCallAction"-->
+<!--                    description="Method call logger button"/>-->
+                <add-to-group group-id="RunMenu" anchor="last"/>
+            <!--add-to-group group-id="ToolsMenu" anchor="first"/-->
+        </group>
+    </actions>
+
     <applicationListeners>
+        <!-- The topic attribute specifies the listener interface corresponding to the type of events you want to receive.
+        Usually, this is the interface used as the type parameter of the Topic instance for the type of events.
+        The class attribute specifies the class in your plugin that implements the listener interface and receives the events. -->
         <listener class="com.github.lylanv.greenedge.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
     </applicationListeners>
+
+    <projectListeners>
+        <listener class="com.github.lylanv.greenedge.inspections.MyCompiler" topic="com.android.tools.idea.projectsystem.ProjectSystemBuildManager$BuildListener"/>
+        <listener class="com.github.lylanv.greenedge.inspections.MyRunListener" topic="com.android.tools.idea.run.AndroidProgramRunner"/>
+<!--        <listener class="com.github.lylanv.greenedge.inspections.MyRunListener" topic="com.android.tools.idea.run.AndroidProgramRunner"/>-->
+    </projectListeners>
+
 </idea-plugin>

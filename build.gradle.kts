@@ -1,6 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 
+
 fun properties(key: String) = providers.gradleProperty(key)
 fun environment(key: String) = providers.environmentVariable(key)
 
@@ -91,6 +92,14 @@ tasks {
                 )
             }
         }
+    }
+
+    //LYLA: I set this based on https://plugins.jetbrains.com/docs/intellij/android-studio.html#q6m0e5_126
+    runIde {
+        // Absolute path to installed target 3.5 Android Studio to use as
+        // IDE Development Instance (the "Contents" directory is macOS specific):
+        ideDir.set(file("/Applications/Android Studio.app/Contents"))
+        // LYLA: to set the version of runtime ide use jbrVersion.set("")
     }
 
     // Configure UI tests plugin
