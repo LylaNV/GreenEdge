@@ -23,9 +23,11 @@ public class MyRunListener extends AndroidProgramRunner {
 
     private void applicationStarted(Project project) {
 
-        for (int i = 0; i < 50000; i++) {
-            System.out.println("applicationStarted-------------------Huuuuuuuuraaaaaaaaaaaaaa");
-        }
+//        LogcatAnalyzerToolWindowFactory logcatAnalyzerToolWindowFactory = new LogcatAnalyzerToolWindowFactory();
+
+//        for (int i = 0; i < 50000; i++) {
+//            System.out.println("applicationStarted-------------------Huuuuuuuuraaaaaaaaaaaaaa");
+//        }
 
 //        ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
 //        ToolWindow window = toolWindowManager.getToolWindow("myToolWindow");

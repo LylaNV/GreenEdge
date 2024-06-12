@@ -42,7 +42,7 @@ public class MyCompiler implements BuildListener {
     private void MyInspection(){
 
         System.out.println("Run button clicked");
-        LogcatAnalyzerToolWindowFactory logcatAnalyzerToolWindowFactory = new LogcatAnalyzerToolWindowFactory();
+        //LogcatAnalyzerToolWindowFactory logcatAnalyzerToolWindowFactory = new LogcatAnalyzerToolWindowFactory();
 
 
         Project project = ProjectManager.getInstance().getDefaultProject();

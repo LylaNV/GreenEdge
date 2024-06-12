@@ -13,62 +13,11 @@ import org.jfree.data.category.DefaultCategoryDataset;
 
 //public class LogCatReader implements Runnable {
 public class LogCatReader implements Runnable {
-//    private LogcatAnalyzerToolWindow toolWindow;
-//    private final String TAG;
-//    private volatile boolean running = true; // Volatile to ensure visibility across threads
-//
-//
-//    public LogCatReader(LogcatAnalyzerToolWindow toolWindow, String TAG) {
-//        this.TAG = TAG;
-//        this.toolWindow = toolWindow;
-//    }
-//
-//    @Override
-//    public void run() {
-//        try {
-//            //Process logcatProcess = Runtime.getRuntime().exec("logcat -v time");
-//            Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
-//            BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));
-//            String line;
-//            while ((line = logcatReader.readLine()) != null && running) {
-//                if (line.contains(TAG)) {
-//                    //logcatOutput.append(line).append("\n");
-//                    toolWindow.appendLog(line);
-//                }
-//            }
-//            logcatReader.close();
-//            logcatProcess.destroy();
-//        }catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//
-//    }
-//
-//    public void stop(){
-//        running = false;
-//        //toolWindow.deleteContent();
-//    }
-
-//    public String readLogCat() throws IOException {
-//        StringBuilder logcatOutput = new StringBuilder();
-//        //Process logcatProcess = Runtime.getRuntime().exec("logcat -v time");
-//        Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
-//        BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));
-//        String line;
-//        while ((line = logcatReader.readLine()) != null && running) {
-//            if (line.contains(TAG)) {
-//                logcatOutput.append(line).append("\n");
-//            }
-//        }
-//        logcatReader.close();
-//        logcatProcess.destroy();
-//        return logcatOutput.toString();
-//    }
-
     private LogcatAnalyzerToolWindow toolWindow;
     private final String TAG;
     private volatile boolean running = true; // Volatile to ensure visibility across threads
     Map<String, Integer> redAPIsCount = new HashMap<>(); // Holds the name of APIs and their counts
+    private DefaultCategoryDataset dataset;
 
     public LogCatReader(LogcatAnalyzerToolWindow toolWindow, String TAG) {
         this.toolWindow = toolWindow;
@@ -93,68 +42,46 @@ public class LogCatReader implements Runnable {
             }
             logcatReader.close();
             logcatProcess.destroy();
+            stop();
         }catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+    //Gets API/method call name from the logged line
     private String getAPICallName(String line) {
+        // finds the index of the open parentheses signe ("(") in the logged line
         int index = line.indexOf('(');
         if (index < 0) {
             return null;
         }
 
+        // finds the index of the first comma after open parentheses signe ("(") in the logged line
         int firstComma = line.indexOf(',', index + 1);
         if (firstComma < 0) {
             return null;
         }
 
+        // returns the first argument in the parentheses
         return line.substring(index + 1, firstComma).trim();
 
     }
 
-//    public void analyzeFile(String filePath) {
-//        StringBuilder text = new StringBuilder();
-//        Map<String, Integer> logLevelCount = new HashMap<>();
-//
-//        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-//            String line;
-//            while ((line = reader.readLine()) != null) {
-//                text.append(line).append("\n");
-//
-//                String logLevel = getLogLevel(line);
-//                logLevelCount.put(logLevel, logLevelCount.getOrDefault(logLevel, 0) + 1);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//        toolWindow.updateText(text.toString());
-//        updateGraph(logLevelCount);
-//    }
-
-    public void stop(){
-        running = false;
+    public void stop() throws IOException {
+        //running = false;
+        Runtime runtime = Runtime.getRuntime();
+        runtime.exec("adb logcat -c");
+        dataset.clear();
+        redAPIsCount.clear();
+//        toolWindow.clearTextArea();
+//        toolWindow.clearGraph();
+        toolWindow.deleteLogcatAnalyzerToolWindow();
         //toolWindow.deleteContent();
     }
 
-    private String getLogLevel(String logLine) {
-        if (logLine.contains(" E/")) {
-            return "ERROR";
-        } else if (logLine.contains(" W/")) {
-            return "WARN";
-        } else if (logLine.contains(" I/")) {
-            return "INFO";
-        } else if (logLine.contains(" D/")) {
-            return "DEBUG";
-        } else if (logLine.contains(" V/")) {
-            return "VERBOSE";
-        }
-        return "UNKNOWN";
-    }
-
+    // Updates the bar graph
     private void updateGraph(Map<String, Integer> logLevelCount) {
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        dataset = new DefaultCategoryDataset();
 
         for (Map.Entry<String, Integer> entry : logLevelCount.entrySet()) {
             dataset.addValue(entry.getValue(), entry.getKey(), "");

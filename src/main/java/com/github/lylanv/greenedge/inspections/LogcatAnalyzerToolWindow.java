@@ -13,20 +13,15 @@ import org.jfree.data.category.DefaultCategoryDataset;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.Rectangle2D;
-import java.util.List;
 
 public class LogcatAnalyzerToolWindow {
     private final Project project;
-//    private final JTabbedPane tabs;
-//    private final JTextArea textArea;
-//    private final ChartPanel chartPanel;
-
-    //private final JBPanel chartPanel;
 
     private JPanel textPanel;
     private JPanel graphPanel;
     private JTextArea logcatTextArea;
+
+    private boolean clearGraph = false;
 
     public LogcatAnalyzerToolWindow(Project project) {
         this.project = project;
@@ -34,9 +29,11 @@ public class LogcatAnalyzerToolWindow {
         textPanel = new JPanel(new BorderLayout());
         graphPanel = new JPanel(new BorderLayout());
 
+        // creates text area to show log statements
         logcatTextArea = new JTextArea();
         textPanel.add(new JScrollPane(logcatTextArea), BorderLayout.CENTER);
 
+        // creates bar chart to show each red API calls count
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
         JFreeChart barChart = ChartFactory.createBarChart(
                 "Logcat Analysis",
@@ -52,15 +49,6 @@ public class LogcatAnalyzerToolWindow {
 
         ChartPanel chartPanel = new ChartPanel(barChart);
         graphPanel.add(chartPanel, BorderLayout.CENTER);
-//        tabs = new JTabbedPane();
-//
-//        textArea = new JTextArea();
-//        //chartPanel = createBarChartPanel(new DefaultCategoryDataset()); // Initial empty dataset
-//        chartPanel = createBarChartPanel(new DefaultCategoryDataset()); // Initial empty dataset
-//
-//        tabs.addTab("Logcat Analyzer", new JScrollPane(textArea));
-//        tabs.addTab("Bar Graph", chartPanel);
-
     }
 
 
@@ -77,47 +65,58 @@ public class LogcatAnalyzerToolWindow {
         logcatTextArea.setText(text);
     }
 
+    // updates the bar graph
     public void updateGraph(DefaultCategoryDataset dataset) {
-        JFreeChart barChart = ChartFactory.createBarChart(
-                "Logcat Analysis",
-                "Category",
-                "Count",
-                dataset,
-                PlotOrientation.VERTICAL,
-                true, true, false);
-        graphPanel.removeAll();
-        graphPanel.add(new ChartPanel(barChart), BorderLayout.CENTER);
-        graphPanel.revalidate();
-        graphPanel.repaint();
+        if (!clearGraph) {
+            JFreeChart barChart = ChartFactory.createBarChart(
+                    "Logcat Analysis",
+                    "Category",
+                    "Count",
+                    dataset,
+                    PlotOrientation.VERTICAL,
+                    true, true, false);
+            graphPanel.removeAll();
+            graphPanel.add(new ChartPanel(barChart), BorderLayout.CENTER);
+            graphPanel.revalidate();
+            graphPanel.repaint();
+        }else {
+            JFreeChart barChart = ChartFactory.createBarChart(
+                    "Logcat Analysis",
+                    "Category",
+                    "Count",
+                    null,
+                    PlotOrientation.VERTICAL,
+                    true, true, false);
+            graphPanel.removeAll();
+            graphPanel.add(new ChartPanel(barChart), BorderLayout.CENTER);
+            graphPanel.revalidate();
+            graphPanel.repaint();
+            clearGraph = false;
+        }
     }
 
+    // adds the newly found log statement to the text area
     public void appendLog(String log) {
         logcatTextArea.append(log + "\n");
     }
 
-    public void clearTextArea(String log) {
-        logcatTextArea.removeAll();
+//    public void clearTextArea() {
+//        logcatTextArea.setText("");
+//        //logcatTextArea = new JTextArea();
+//    }
+//
+//    public void clearGraph() {
+//        //DefaultCategoryDataset emptyDataset = new DefaultCategoryDataset();
+//        clearGraph = true;
+//        updateGraph(null);
+//        graphPanel.removeAll();
+//        //graphPanel = new JPanel(new BorderLayout());
+//    }
+
+    public void deleteLogcatAnalyzerToolWindow(){
+        logcatTextArea.setText("");
+        clearGraph = true;
+        updateGraph(null);
+        graphPanel.removeAll();
     }
-
-
-//    public void appendLog(String log) {
-//        textArea.append(log + "\n");
-//    }
-//
-//    public JTextArea getContent() {
-//        return textArea;
-//    }
-//
-//    private ChartPanel createBarChartPanel(DefaultCategoryDataset dataset) {
-//        JFreeChart chart = ChartFactory.createBarChart(
-//                "Method Call Counts",
-//                "Method Name",
-//                "Number of Calls",
-//                dataset,
-//                PlotOrientation.VERTICAL,
-//                true,
-//                true,
-//                false);
-//        return new ChartPanel(chart);
-//    }
 }
