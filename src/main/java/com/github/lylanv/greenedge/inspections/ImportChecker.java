@@ -48,6 +48,7 @@ public class ImportChecker {
                 Document inputDocument = psiFile.getViewProvider().getDocument();
                 String importStatement = "import android.util.Log;\n";
 
+                //TODO: check this it is not working if there is not free space!
                 // Insert the import statement after the first line break
                 int firstLineBreak = psiFile.getText().indexOf("\n");
                 if (firstLineBreak > 0) {

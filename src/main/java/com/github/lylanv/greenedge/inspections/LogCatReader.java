@@ -1,10 +1,6 @@
 package com.github.lylanv.greenedge.inspections;
 
-import com.android.tools.idea.adb.AdbShellCommandsUtil;
-import org.jetbrains.kotlin.serialization.js.ast.JsAstProtoBuf;
-
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map;
@@ -32,7 +28,6 @@ public class LogCatReader implements Runnable {
             String line;
             while ((line = logcatReader.readLine()) != null && running) {
                 if (line.contains(TAG)) {
-                    //logcatOutput.append(line).append("\n");
                     toolWindow.appendLog(line);
 
                     String extractedAPICallName = getAPICallName(line);
