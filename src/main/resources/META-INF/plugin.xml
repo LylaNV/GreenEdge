@@ -19,6 +19,7 @@
     <depends>com.intellij.modules.all</depends>
     <depends>com.android.tools.idea.smali</depends>
 
+
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">

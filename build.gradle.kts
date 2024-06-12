@@ -25,6 +25,8 @@ repositories {
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
 dependencies {
 //    implementation(libs.annotations)
+    implementation("org.jfree:jfreechart:1.5.3")
+    implementation(kotlin("stdlib"))
 }
 
 // Set the JVM language level used to build the project.

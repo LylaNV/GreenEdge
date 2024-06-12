@@ -20,6 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GreenMeter extends AnAction {
 
@@ -47,6 +49,8 @@ public class GreenMeter extends AnAction {
     public void actionPerformed(@NotNull AnActionEvent event) {
 
         System.out.println("[GreenMeter -> actionPerformed$ GreenMeter button is clicked");
+
+        //fillRedAPICallsSet();
 
         //Gets the project
         project = event.getData(PlatformDataKeys.PROJECT);
@@ -176,48 +180,6 @@ public class GreenMeter extends AnAction {
         }
     }
 
-//    private void createAnnotationFile(Project project, PsiDirectory projectDirectory, String startOfMethodAnnotationClass) {
-//        try{
-//
-//            WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {
-//
-//                PsiElementFactory myF = JavaPsiFacade.getInstance(project).getElementFactory();
-//                try {
-//                    myF.createClass("StartOfMethod.java", projectDirectory, "@interface", " ");
-//                } catch (Exception ex) {
-//                }
-//
-//            });
-//
-//
-////            //PsiFileFactory psiFileFactory = PsiFileFactory.getInstance(project);
-////            PsiElementFactory psiElementFactory = PsiElementFactory.getInstance(project);
-////            PsiClass myPsiClass = psiElementFactory.createClass("StartOfMethod");
-////            System.out.println("NEW Class is" + myPsiClass.getModifierList());
-////
-////
-////            //PsiElementFactory myfactory = JavaPsiFacade.getInstance(project).getElementFactory();
-////            PsiStatement statement = psiElementFactory.createStatementFromText("@interface", myPsiClass);
-////            //annotation = psiElementFactory.createAnnotationFromText("@interface", myPsiClass);
-////            WriteCommandAction.runWriteCommandAction(project, (Runnable) () -> {myPsiClass.getModifierList().add(annotation);});
-////            System.out.println("NEW Class is" + myPsiClass.getModifierList());
-////            //PsiFile MyPsiFile = psiFileFactory.createFileFromText(".java","StartOfMethod","test")
-////            JavaDirectoryService javaDirectoryService = JavaDirectoryService.getInstance();
-////            //JavaPackage javaPackage = (JavaPackage) javaDirectoryService.getPackage(projectDirectory);
-////            System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ javaDirectoryService is " + javaDirectoryService);
-////            //System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ javaPackage is " + javaPackage);
-////
-////            //String content = generateAnnotationClassContent(startOfMethodAnnotationClass);
-//
-//        } catch (Exception exception){
-//            System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ Fatal error: Cannot add the " + startOfMethodAnnotationClass + " annotation class to the project path.");
-//            System.out.println("[GreenMeter -> actionPerformed -> createAnnotationFile$ Fatal error: The reason is " + exception.getMessage());
-//        }
-//    }
-
-//    private String generateAnnotationClassContent(String startOfMethodAnnotationClass) {
-//    }
-
 
     // This method converts VirtualFiles to psiClass
     private static PsiClass[] convertVirtualFileToPsiClass(Project project, VirtualFile virtualFile) {
@@ -344,63 +306,84 @@ public class GreenMeter extends AnAction {
                     String methodCallName = expression.getMethodExpression().getReferenceName();
                     System.out.println("[GreenMeter -> analyzeAndroidAPIs$ methodCallName is " + methodCallName);
 
-                    switch (methodCallName) {
-                        case "performClick":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "getIntExtra":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "i":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "finish":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            //TODO: add the log statement before finish().
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "cancelAll":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "startActivityForResult":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "findViewById":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "getPhoneType":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "clear":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        case "getPixel":
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
-                            addLogStatement(expression,methodCallName, fileName);
-                            break;
-                        default:
-                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is default");
-
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
-//                                case :
+                    // This segment of code logs the method calls - WORKING
+                    if (!methodCallName.equals("d") && singleton.redAPICalls.keySet().contains(methodCallName)) {
+                        addLogStatement(expression,methodCallName, fileName);
+                    } else {
+                        if (singleton.redAPICalls.keySet().contains(methodCallName)) {
+                            PsiExpressionList argumentList = expression.getArgumentList();
+                            if (argumentList != null) {
+                                PsiExpression[] arguments = argumentList.getExpressions();
+                                PsiExpression firstArgument = arguments[0];
+                                if (!firstArgument.getText().contains(Logging_TAG)) {
+                                    addLogStatement(expression,methodCallName, fileName);
+                                }
+                            }else {
+                                addLogStatement(expression,methodCallName, fileName);
+                            }
+                        }
                     }
+
+
+
+
+//                    switch (methodCallName) {
+//                        case "performClick":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "getIntExtra":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "i":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "finish":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            //TODO: add the log statement before finish().
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "cancelAll":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "startActivityForResult":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "findViewById":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "getPhoneType":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "clear":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        case "getPixel":
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is: " + methodCallName);
+//                            addLogStatement(expression,methodCallName, fileName);
+//                            break;
+//                        default:
+//                            System.out.println("[GreenMeter -> analyzeAndroidAPIs$ case is default");
+//
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+////                                case :
+//                    }
 
 
 //                    CommandProcessor.getInstance().executeCommand(project, (Runnable) () -> {
