@@ -100,19 +100,6 @@ public class LogcatAnalyzerToolWindow {
         logcatTextArea.append(log + "\n");
     }
 
-//    public void clearTextArea() {
-//        logcatTextArea.setText("");
-//        //logcatTextArea = new JTextArea();
-//    }
-//
-//    public void clearGraph() {
-//        //DefaultCategoryDataset emptyDataset = new DefaultCategoryDataset();
-//        clearGraph = true;
-//        updateGraph(null);
-//        graphPanel.removeAll();
-//        //graphPanel = new JPanel(new BorderLayout());
-//    }
-
     public void deleteLogcatAnalyzerToolWindow(){
         logcatTextArea.setText("");
         clearGraph = true;

@@ -73,10 +73,7 @@ public class LogCatReader implements Runnable {
         runtime.exec("adb logcat -c");
         dataset.clear();
         redAPIsCount.clear();
-//        toolWindow.clearTextArea();
-//        toolWindow.clearGraph();
         toolWindow.deleteLogcatAnalyzerToolWindow();
-        //toolWindow.deleteContent();
     }
 
     // Updates the bar graph
