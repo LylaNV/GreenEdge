@@ -7,6 +7,8 @@ import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
@@ -14,8 +16,11 @@ import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.PsiShortNamesCache;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.indexing.FileBasedIndex;
+import com.intellij.util.xml.ConvertContext;
+import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,6 +31,7 @@ import java.util.Set;
 public class GreenMeter extends AnAction {
 
     Project project; //Holds the project
+    public static String projectName;
     PsiParserFacade parserFacade; //Holds the PsiParserFacade
     Editor editor; //Holds the editor
     PsiFile psiFile; //Holds PsiFile
@@ -59,6 +65,7 @@ public class GreenMeter extends AnAction {
             return;
         }else {
             //TODO: Singleton is not recommended in plugin development, consider to remove it.
+            projectName = project.getName();
             singleton = new Singleton(project);
         }
 
@@ -76,7 +83,6 @@ public class GreenMeter extends AnAction {
             System.out.println("[GreenMeter -> actionPerformed$ Fatal error: PSI tree cannot be manipulated!");
             return;
         }
-
 
         //Gets the PsiElement Factory
         factory = JavaPsiFacade.getElementFactory(project);
@@ -140,6 +146,8 @@ public class GreenMeter extends AnAction {
 //        if (projectDirectory == null) {
 //            System.out.println("[GreenMeter -> actionPerformed$ Fatal error: projectDirectory is null");
 //            return;
+//        }else {
+//            System.out.println("[GreenMeter -> actionPerformed$ projectDirectory is " + projectDirectory.getName());
 //        }
 
 

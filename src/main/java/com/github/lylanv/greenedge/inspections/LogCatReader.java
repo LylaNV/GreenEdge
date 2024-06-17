@@ -15,6 +15,8 @@ public class LogCatReader implements Runnable {
     Map<String, Integer> redAPIsCount = new HashMap<>(); // Holds the name of APIs and their counts
     private DefaultCategoryDataset dataset;
 
+    public static int energyConsumption = 0;
+
     public LogCatReader(LogcatAnalyzerToolWindow toolWindow, String TAG) {
         this.toolWindow = toolWindow;
         this.TAG = TAG;
@@ -23,6 +25,7 @@ public class LogCatReader implements Runnable {
     @Override
     public void run() {
         try {
+            Process logcatCleaningProcess = Runtime.getRuntime().exec("adb logcat -c");
             Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
             BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));
             String line;
@@ -32,7 +35,12 @@ public class LogCatReader implements Runnable {
 
                     String extractedAPICallName = getAPICallName(line);
                     redAPIsCount.put(extractedAPICallName, redAPIsCount.getOrDefault(extractedAPICallName, 0) + 1);
+                    energyConsumption ++;
                     updateGraph(redAPIsCount);
+                } else {
+                    if (line.contains(GreenMeter.projectName)) {
+                        System.out.println(line);
+                    }
                 }
             }
             logcatReader.close();
@@ -63,10 +71,12 @@ public class LogCatReader implements Runnable {
     }
 
     public void stop() throws IOException {
-        //running = false;
+        running = false;
         Runtime runtime = Runtime.getRuntime();
         runtime.exec("adb logcat -c");
-        dataset.clear();
+        if (dataset !=null){
+            dataset.clear();
+        }
         redAPIsCount.clear();
         toolWindow.deleteLogcatAnalyzerToolWindow();
     }

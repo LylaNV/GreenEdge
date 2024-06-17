@@ -29,6 +29,10 @@ public class LogcatAnalyzerToolWindowFactory implements ToolWindowFactory, DumbA
         Content barGraphContent = contentFactory.createContent(logcatAnalyzerToolWindow.getGraphPanel(), "Bar Graph", false);
         toolWindow.getContentManager().addContent(barGraphContent);
 
+        // Line graph tab
+        Content lineGraphContent = contentFactory.createContent(logcatAnalyzerToolWindow.getGraphPanel(), "Line Graph", false);
+        toolWindow.getContentManager().addContent(lineGraphContent);
+
         logcatReader = new LogCatReader(logcatAnalyzerToolWindow,Logging_TAG);
         logcatAnalyzerThread = new Thread(logcatReader);
         logcatAnalyzerThread.start();

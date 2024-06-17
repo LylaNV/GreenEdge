@@ -2,24 +2,33 @@ package com.github.lylanv.greenedge.inspections;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
-import com.intellij.ui.components.JBPanel;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class LogcatAnalyzerToolWindow {
     private final Project project;
 
     private JPanel textPanel;
     private JPanel graphPanel;
+    private JPanel lineChartPanel;
     private JTextArea logcatTextArea;
+
+    public int time = 0;
+    public Timer timer;
+    private XYSeries series;
 
     private boolean clearGraph = false;
 
@@ -28,6 +37,7 @@ public class LogcatAnalyzerToolWindow {
 
         textPanel = new JPanel(new BorderLayout());
         graphPanel = new JPanel(new BorderLayout());
+        lineChartPanel = new JPanel(new BorderLayout());
 
         // creates text area to show log statements
         logcatTextArea = new JTextArea();
@@ -49,9 +59,55 @@ public class LogcatAnalyzerToolWindow {
 
         ChartPanel chartPanel = new ChartPanel(barChart);
         graphPanel.add(chartPanel, BorderLayout.CENTER);
+
+        // creates line chart to show energy consumption
+        series = new XYSeries("Time");
+        XYSeriesCollection energyDataset = new XYSeriesCollection(series);
+        JFreeChart energyChart = ChartFactory.createXYLineChart(
+                "Energy consumption of the application over time", //Chart title
+                "Time", //X-axis label
+                "Energy (J)", //Y-axis label
+                energyDataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+        XYPlot energyPlot = energyChart.getXYPlot();
+        //energyPlot.setBackgroundPaint(Color.WHITE);
+        energyPlot.setDomainPannable(true); // Allow panning (scrolling) on x-axis
+        ChartPanel energyChartPanel = new ChartPanel(energyChart);
+        //lineChartPanel.add(energyChartPanel, BorderLayout.CENTER);
+
+        JFrame frame = new JFrame("Energy consumption of the application over time");
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.add(energyChartPanel, BorderLayout.CENTER);
+        frame.pack();
+        frame.setVisible(true);
+
+        // Schedule a task to update the chart every second
+        timer = new Timer();
+        timer.schedule(new UpdateTask(), 0, 1000); // Update every 1000 milliseconds (1 second)
     }
 
 
+    // Task to update the chart data
+    class UpdateTask extends TimerTask {
+        @Override
+        public void run() {
+            // Simulate data update (replace with your actual data fetching mechanism)
+            int energyConsumption = energyDataFetch(); // Replace with actual method to get occurrences
+
+            // Add or update data point in the series
+            series.addOrUpdate(time++, energyConsumption);
+        }
+    }
+
+    // Method to simulate fetching data (replace with actual data source)
+    private int energyDataFetch() {
+        // Example: randomly generate occurrences
+        return LogCatReader.energyConsumption;
+    }
 
     public JPanel getTextPanel() {
         return textPanel;
@@ -95,6 +151,36 @@ public class LogcatAnalyzerToolWindow {
         }
     }
 
+    // updates the line graph
+    public void updateLineChart(XYSeriesCollection energyDS) {
+        if (!clearGraph) {
+            JFreeChart lineChart = ChartFactory.createXYLineChart(
+                    "Energy Consumption of Application", //Chart title
+                    "Time", //X-axis label
+                    "Energy (J)", //Y-axis label
+                    energyDS,
+                    PlotOrientation.VERTICAL, true, true, false
+            );
+            lineChartPanel.removeAll();
+            lineChartPanel.add(new ChartPanel(lineChart), BorderLayout.CENTER);
+            lineChartPanel.revalidate();
+            lineChartPanel.repaint();
+        }else {
+            JFreeChart lineChart = ChartFactory.createXYLineChart(
+                    "Energy Consumption of Application", //Chart title
+                    "Time", //X-axis label
+                    "Energy (J)", //Y-axis label
+                    null,
+                    PlotOrientation.VERTICAL, true, true, false
+            );
+            lineChartPanel.removeAll();
+            lineChartPanel.add(new ChartPanel(lineChart), BorderLayout.CENTER);
+            lineChartPanel.revalidate();
+            lineChartPanel.repaint();
+            clearGraph = false;
+        }
+    }
+
     // adds the newly found log statement to the text area
     public void appendLog(String log) {
         logcatTextArea.append(log + "\n");
@@ -104,6 +190,12 @@ public class LogcatAnalyzerToolWindow {
         logcatTextArea.setText("");
         clearGraph = true;
         updateGraph(null);
+        updateLineChart(null);
+
         graphPanel.removeAll();
+        graphPanel.revalidate();
+
+        lineChartPanel.removeAll();
+        lineChartPanel.revalidate();
     }
 }
