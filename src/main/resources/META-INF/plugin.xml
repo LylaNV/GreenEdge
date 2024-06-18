@@ -48,6 +48,7 @@
     </applicationListeners>
 
     <projectListeners>
+        <listener class="com.github.lylanv.greenedge.inspections.AndroidProjectBuildListener" topic="com.android.tools.idea.projectsystem.ProjectSystemBuildManager$BuildListener"/>
     </projectListeners>
 
 </idea-plugin>

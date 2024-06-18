@@ -25,6 +25,7 @@ public class LogCatReader implements Runnable {
     @Override
     public void run() {
         try {
+            //toolWindow.drawLineGraph();
             Process logcatCleaningProcess = Runtime.getRuntime().exec("adb logcat -c");
             Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
             BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));

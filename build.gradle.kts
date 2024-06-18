@@ -20,12 +20,14 @@ version = properties("pluginVersion").get()
 // Configure project's dependencies
 repositories {
     mavenCentral()
+    google()
 }
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
 dependencies {
 //    implementation(libs.annotations)
     implementation("org.jfree:jfreechart:1.5.3")
+    //implementation("com.android.tools.ddmlib:ddmlib:23.4.0")
     implementation(kotlin("stdlib"))
 }
 
