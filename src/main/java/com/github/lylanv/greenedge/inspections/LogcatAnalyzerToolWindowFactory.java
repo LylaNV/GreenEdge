@@ -15,14 +15,16 @@ public class LogcatAnalyzerToolWindowFactory implements ToolWindowFactory, DumbA
     private Thread logcatAnalyzerThread;
     private LogCatReader logcatReader;
     private final String Logging_TAG = "MethodCallProfiler";
+    private String packageName;
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         LogcatAnalyzerToolWindow logcatAnalyzerToolWindow = new LogcatAnalyzerToolWindow(project);
+        EventBusManager.register(logcatAnalyzerToolWindow);
         ContentFactory contentFactory = ContentFactory.getInstance();
 
         // Text tab
-        Content textContent = contentFactory.createContent(logcatAnalyzerToolWindow.getTextPanel(), "Text", false);
+        Content textContent = contentFactory.createContent(logcatAnalyzerToolWindow.getTextPanel(), "APIs' Line", false);
         toolWindow.getContentManager().addContent(textContent);
 
         // Bar graph tab
@@ -30,10 +32,12 @@ public class LogcatAnalyzerToolWindowFactory implements ToolWindowFactory, DumbA
         toolWindow.getContentManager().addContent(barGraphContent);
 
         // Line graph tab
-        Content lineGraphContent = contentFactory.createContent(logcatAnalyzerToolWindow.getGraphPanel(), "Line Graph", false);
+        Content lineGraphContent = contentFactory.createContent(logcatAnalyzerToolWindow.getLineChartPanel(), "Line Graph", false);
         toolWindow.getContentManager().addContent(lineGraphContent);
 
+        // Create new thread to analyze the logcat file
         logcatReader = new LogCatReader(logcatAnalyzerToolWindow,Logging_TAG);
+        EventBusManager.register(logcatReader);
         logcatAnalyzerThread = new Thread(logcatReader);
         logcatAnalyzerThread.start();
 
@@ -47,13 +51,10 @@ public class LogcatAnalyzerToolWindowFactory implements ToolWindowFactory, DumbA
                 if (window.getId().equals(toolWindow.getId())) {
                     if (logcatAnalyzerThread == null || !logcatAnalyzerThread.isAlive()) {
                         logcatReader = new LogCatReader(logcatAnalyzerToolWindow,Logging_TAG);
+                        EventBusManager.register(logcatReader);
                         logcatAnalyzerThread = new Thread(logcatReader);
                         logcatAnalyzerThread.start();
                     }
-//                    else {
-//                        logcatAnalyzerToolWindow.clearGraph();
-//                        logcatAnalyzerToolWindow.clearTextArea();
-//                    }
                 }
             }
 

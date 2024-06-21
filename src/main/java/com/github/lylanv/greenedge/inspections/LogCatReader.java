@@ -1,13 +1,20 @@
 package com.github.lylanv.greenedge.inspections;
 
+import com.github.lylanv.greenedge.events.ApplicationStoppedEvent;
+import com.github.lylanv.greenedge.events.BuildSuccessEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+
+import com.android.ddmlib.logcat.LogCatListener;
+import com.android.ddmlib.logcat.LogCatMessage;
+import com.google.common.eventbus.Subscribe;
+import org.gradle.launcher.daemon.protocol.Stop;
 import org.jfree.data.category.DefaultCategoryDataset;
 
-//public class LogCatReader implements Runnable {
 public class LogCatReader implements Runnable {
     private LogcatAnalyzerToolWindow toolWindow;
     private final String TAG;
@@ -17,9 +24,28 @@ public class LogCatReader implements Runnable {
 
     public static int energyConsumption = 0;
 
+    private boolean buildSucceeded = false;
+
+
     public LogCatReader(LogcatAnalyzerToolWindow toolWindow, String TAG) {
         this.toolWindow = toolWindow;
         this.TAG = TAG;
+    }
+
+    @Subscribe
+    public void handleBuildSuccessEvent(BuildSuccessEvent event) {
+        if (event.getBuildStatus()){
+            buildSucceeded = true;
+            System.out.println("[LogCatReader -> handleBuildSuccessEvent$ Build successful");
+        }
+    }
+
+    @Subscribe
+    public void handleApplicationStoppedEvent(ApplicationStoppedEvent event) throws IOException {
+        if (event.getApplicationStopped()){
+            System.out.println("[LogCatReader -> handleBuildSuccessEvent$ Application stopped");
+            stop();
+        }
     }
 
     @Override
@@ -39,6 +65,7 @@ public class LogCatReader implements Runnable {
                     energyConsumption ++;
                     updateGraph(redAPIsCount);
                 } else {
+                    // TODO: I got null pointer- Check it
                     if (line.contains(GreenMeter.projectName)) {
                         System.out.println(line);
                     }
@@ -46,7 +73,7 @@ public class LogCatReader implements Runnable {
             }
             logcatReader.close();
             logcatProcess.destroy();
-            stop();
+            //stop();
         }catch (Exception e) {
             e.printStackTrace();
         }
@@ -79,7 +106,7 @@ public class LogCatReader implements Runnable {
             dataset.clear();
         }
         redAPIsCount.clear();
-        toolWindow.deleteLogcatAnalyzerToolWindow();
+        energyConsumption = 0;
     }
 
     // Updates the bar graph
@@ -92,5 +119,4 @@ public class LogCatReader implements Runnable {
 
         toolWindow.updateGraph(dataset);
     }
-
 }
