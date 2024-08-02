@@ -23,6 +23,7 @@ public class LogCatReader implements Runnable {
     private DefaultCategoryDataset dataset;
 
     public static int energyConsumption = 0;
+    public static int batteryLevel = 0;
 
     private boolean buildSucceeded = false;
 
@@ -52,28 +53,64 @@ public class LogCatReader implements Runnable {
     public void run() {
         try {
             //toolWindow.drawLineGraph();
-            Process logcatCleaningProcess = Runtime.getRuntime().exec("adb logcat -c");
-            Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
-            BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));
-            String line;
-            while ((line = logcatReader.readLine()) != null && running) {
-                if (line.contains(TAG)) {
-                    toolWindow.appendLog(line);
+            //Process batteryPercentageProcess = Runtime.getRuntime().exec("adb emu power display");
+            Boolean adbServerIsRunning = AdbUtils.isAdbAvailable();
+            if (!adbServerIsRunning){
+                AdbUtils.startAdb();
+            }
 
-                    String extractedAPICallName = getAPICallName(line);
-                    redAPIsCount.put(extractedAPICallName, redAPIsCount.getOrDefault(extractedAPICallName, 0) + 1);
-                    energyConsumption ++;
-                    updateGraph(redAPIsCount);
-                } else {
-                    // TODO: I got null pointer- Check it
-                    if (line.contains(GreenMeter.projectName)) {
-                        System.out.println(line);
+//            Process batteryPercentageProcess = AdbUtils.getEmulatorBatteryLevel();
+//            if (batteryPercentageProcess != null) {
+//                BufferedReader reader = new BufferedReader(new InputStreamReader(batteryPercentageProcess.getInputStream()));
+//                String lineBatteryPercentage;
+//                while ((lineBatteryPercentage = reader.readLine()) != null) {
+//                    if (lineBatteryPercentage.contains("capacity")) {
+//                        //toolWindow.appendLog(lineBatteryPercentage);
+//                        batteryLevel = Integer.parseInt(lineBatteryPercentage.split(" ")[1]);
+//                        toolWindow.appendLog("Battery capacity is: " + batteryLevel);
+//                    }
+//                }
+//                reader.close();
+//                batteryPercentageProcess.destroy();
+//            } else {
+//                System.out.println("[LogCatReader -> run$ Failed to get emulator battery level");
+//                batteryPercentageProcess.destroy();
+//            }
+
+
+            //Process logcatCleaningProcess = Runtime.getRuntime().exec("adb logcat -c");
+            AdbUtils.clearLogCatFile();
+            //Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
+            Process logcatProcess = AdbUtils.getLogCatFile();
+            if (logcatProcess != null) {
+                BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));
+                String line;
+                while ((line = logcatReader.readLine()) != null && running) {
+                    if (line.contains(TAG)) {
+                        toolWindow.appendLog(line);
+
+                        String extractedAPICallName = getAPICallName(line);
+                        redAPIsCount.put(extractedAPICallName, redAPIsCount.getOrDefault(extractedAPICallName, 0) + 1);
+                        energyConsumption ++;
+                        updateGraph(redAPIsCount);
+                    } else {
+                        // TODO: I got null pointer- Check it
+                        if (GreenMeter.projectName != null){
+                            if (line.contains(GreenMeter.projectName)) {
+                                System.out.println(line);
+                            }
+                        }
                     }
                 }
+                logcatReader.close();
+                logcatProcess.destroy();
+                //stop();
+            }else {
+                System.out.println("[LogCatReader -> run$ Failed to get emulator logcat file");
+                logcatProcess.destroy();
             }
-            logcatReader.close();
-            logcatProcess.destroy();
-            //stop();
+
+
         }catch (Exception e) {
             e.printStackTrace();
         }

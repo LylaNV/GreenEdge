@@ -5,13 +5,17 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class Singleton {
-    public static Project project;
+//    public static Project project;
     public static Map<String, Integer> redAPICalls = new HashMap<>(); //holds red API call's name and its energy cost
     public static int NUMBER_OF_RED_APIS;
 
-    public Singleton(final Project project) {
+//    public Singleton(final Project project) {
+//        setAPICallsMap();
+//        Singleton.project = project;
+//    }
+
+    public Singleton() {
         setAPICallsMap();
-        Singleton.project = project;
     }
 
     // This function adds the API calls to ReadAPICalls set
@@ -79,11 +83,11 @@ public class Singleton {
         NUMBER_OF_RED_APIS = redAPICalls.size();
     }
 
-    public void setProject(final Project project) {
-        this.project = project;
-    }
-
-    public Project getProject(){
-        return project;
-    }
+//    public void setProject(final Project project) {
+//        this.project = project;
+//    }
+//
+//    public Project getProject(){
+//        return project;
+//    }
 }

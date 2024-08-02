@@ -4,6 +4,8 @@ import com.github.lylanv.greenedge.events.ApplicationStartedEvent;
 import com.github.lylanv.greenedge.events.ApplicationStoppedEvent;
 import com.github.lylanv.greenedge.events.BuildSuccessEvent;
 import com.google.common.eventbus.Subscribe;
+import com.intellij.execution.ExecutionManager;
+import com.intellij.execution.process.ProcessHandler;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
@@ -21,7 +23,12 @@ import org.jfree.data.xy.XYSeriesCollection;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.awt.event.MouseAdapter;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -43,6 +50,8 @@ public class LogcatAnalyzerToolWindow {
     private boolean buildSucceeded = false;
 
     private boolean clearGraph = false;
+
+    int batteryLevel;
 
     public LogcatAnalyzerToolWindow(Project project) {
         this.project = project;
@@ -147,6 +156,28 @@ public class LogcatAnalyzerToolWindow {
 //            buildSucceeded = true;
 //            clearGraph = false;
 //            fillToolWindowContent();
+
+            if(AdbUtils.isAdbAvailable()){
+                clearGraph = false;
+                try {
+                    fetchBatteryLevel();
+                    fillToolWindowContent();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }else {
+                AdbUtils.startAdb();
+
+                clearGraph = false;
+                try {
+                    fetchBatteryLevel();
+                    fillToolWindowContent();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+
+
         }
     }
 
@@ -163,15 +194,56 @@ public class LogcatAnalyzerToolWindow {
         if (event.getApplicationStarted()){
             //System.out.println("[LogcatAnalyzerToolWindow -> handleBuildSuccessEvent$ Build successful");
             //buildSucceeded = true;
-            clearGraph = false;
-            fillToolWindowContent();
+            if(AdbUtils.isAdbAvailable()){
+                clearGraph = false;
+                try {
+                    fetchBatteryLevel();
+                    fillToolWindowContent();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }else {
+                AdbUtils.startAdb();
+
+                clearGraph = false;
+                try {
+                    fetchBatteryLevel();
+                    fillToolWindowContent();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
         }
+    }
+
+    private void fetchBatteryLevel() throws IOException {
+        Process batteryPercentageProcess = AdbUtils.getEmulatorBatteryLevel();
+        if (batteryPercentageProcess != null) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(batteryPercentageProcess.getInputStream()));
+            String lineBatteryPercentage;
+            while ((lineBatteryPercentage = reader.readLine()) != null) {
+                if (lineBatteryPercentage.contains("capacity")) {
+                    //toolWindow.appendLog(lineBatteryPercentage);
+                    batteryLevel = Integer.parseInt(lineBatteryPercentage.split(" ")[1]);
+                    appendLog("Battery capacity is: " + batteryLevel);
+                }
+            }
+            reader.close();
+            batteryPercentageProcess.destroy();
+        } else {
+            System.out.println("[LogcatAnalyzerToolWindow -> fetchBatteryLevel$ Failed to get emulator battery level");
+            batteryPercentageProcess.destroy();
+        }
+
     }
 
     private void deleteToolWindowContent() {
         series = null;
         time = 0;
-        timer.cancel();
+        if (timer != null) {
+            timer.cancel();
+        }
+        //timer.cancel();
 
         logcatTextArea.setText("");
         updateGraph(null);
@@ -192,6 +264,30 @@ public class LogcatAnalyzerToolWindow {
         // creates text area to show log statements
         //logcatTextArea = new JTextArea();
         textPanel.add(new JScrollPane(logcatTextArea), BorderLayout.CENTER);
+        textPanel.setAutoscrolls(true);
+        textPanel.setVisible(true);
+
+        textPanel.addComponentListener(new ComponentListener() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateText(logcatTextArea.getText());
+            }
+
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                updateText(logcatTextArea.getText());
+            }
+
+            @Override
+            public void componentShown(ComponentEvent e) {
+                updateText(logcatTextArea.getText());
+            }
+
+            @Override
+            public void componentHidden(ComponentEvent e) {
+                updateText(logcatTextArea.getText());
+            }
+        });
 
         // creates bar chart to show each red API calls count
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -248,14 +344,59 @@ public class LogcatAnalyzerToolWindow {
             // Simulate data update (replace with your actual data fetching mechanism)
             int energyConsumption = energyDataFetch(); // Replace with actual method to get occurrences
 
-            // Add or update data point in the series
-            series.addOrUpdate(time++, energyConsumption);
+//            // Add or update data point in the series
+//            series.addOrUpdate(time++, energyConsumption); 
+            
+            if (energyConsumption >= 0){
+                // Add or update data point in the series
+                if (series != null) {
+                    series.addOrUpdate(time++, energyConsumption);
+                }
+            }
+            else {
+                if (energyConsumption < 0){
+                    appendLog("The emulator is out of battery!");
+
+                    stopRunningApp(project);
+                    deleteToolWindowContent();
+                    AdbUtils.stopEmulator();
+//                    try {
+//                        EventBusManager.post(new ApplicationStoppedEvent(true));
+//                        Runtime.getRuntime().exec("adb emu kill");
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+                }
+            }
+
+        }
+    }
+
+
+    public void stopRunningApp(Project project) {
+        ExecutionManager executionManager = ExecutionManager.getInstance(project);
+        ProcessHandler[] runningProcesses = executionManager.getRunningProcesses();
+
+        for (ProcessHandler processHandler : runningProcesses) {
+            if (processHandler.isProcessTerminated() || processHandler.isProcessTerminating()) {
+                continue;
+            }
+            processHandler.destroyProcess();
         }
     }
 
     // Method to simulate fetching data (replace with actual data source)
     public final int energyDataFetch() {
-        return LogCatReader.energyConsumption;
+        int remainingBattery = batteryLevel - LogCatReader.energyConsumption;
+        if (remainingBattery > 0){
+            return remainingBattery;
+        }else{
+            if (remainingBattery == 0){
+                return 0;
+            } else {
+                return -1;
+            }
+        }
     }
 
     public JPanel getTextPanel() {
@@ -272,6 +413,12 @@ public class LogcatAnalyzerToolWindow {
 
     public void updateText(String text) {
         logcatTextArea.setText(text);
+//        logcatTextArea.setVisible(true);
+//        textPanel.add(new JScrollPane(logcatTextArea), BorderLayout.CENTER);
+//        textPanel.setAutoscrolls(true);
+//        textPanel.setVisible(true);
+        textPanel.revalidate();
+        //textPanel.repaint();
     }
 
     // updates the bar graph
@@ -331,5 +478,8 @@ public class LogcatAnalyzerToolWindow {
     // adds the newly found log statement to the text area
     public void appendLog(String log) {
         logcatTextArea.append(log + "\n");
+        textPanel.revalidate();
+//        textPanel.repaint();
+        updateText(logcatTextArea.getText());
     }
 }

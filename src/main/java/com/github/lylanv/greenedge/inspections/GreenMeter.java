@@ -63,10 +63,10 @@ public class GreenMeter extends AnAction {
         if (project == null) {
             System.out.println("[GreenMeter -> actionPerformed$ Fatal error: project is null");
             return;
-        }else {
+        } else {
             //TODO: Singleton is not recommended in plugin development, consider to remove it.
             projectName = project.getName();
-            singleton = new Singleton(project);
+            singleton = new Singleton();
         }
 
         //Initiates the importChecker -> this variable is used to check the list of the imports in the project and add any missing one
@@ -409,6 +409,9 @@ public class GreenMeter extends AnAction {
 
     //This method creates and adds the log statements to the source code of the application
     private void addLogStatement(PsiMethodCallExpression expression, String methodCallName, String javaFile) {
+
+        System.out.println("[GreenMeter -> addLogStatement$ addLogStatement method is called");
+
         //Finds the complete method call expression (I mean the one with semicolon)
         PsiElement parent = expression.getParent();
         while (parent != null && !(parent instanceof PsiStatement)) {

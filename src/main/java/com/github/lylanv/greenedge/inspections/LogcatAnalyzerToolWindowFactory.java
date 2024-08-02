@@ -7,6 +7,7 @@ import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
+import com.intellij.ui.content.ContentManagerListener;
 import com.intellij.util.messages.MessageBusConnection;
 import org.apache.maven.model.Build;
 import org.jetbrains.annotations.NotNull;
@@ -72,6 +73,15 @@ public class LogcatAnalyzerToolWindowFactory implements ToolWindowFactory, DumbA
 //                }
 //            }
         });
+//
+//        toolWindow.addContentManagerListener(new ContentManagerListener() {
+//            Component selected = toolWindow.getComponent();
+//            if (selected != null){
+//
+//            }
+//        });
+//
+//        toolWindow.addContentManagerListener(new Conte);
 
     }
 }
