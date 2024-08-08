@@ -15,7 +15,8 @@ import org.jetbrains.annotations.NotNull;
 public class LogcatAnalyzerToolWindowFactory implements ToolWindowFactory, DumbAware {
     private Thread logcatAnalyzerThread;
     private LogCatReader logcatReader;
-    private final String Logging_TAG = "MethodCallProfiler";
+    private final String Logging_TAG = "GreenMeter";
+    //Previous TAG was MethodCallProfiler
     private String packageName;
 
     @Override

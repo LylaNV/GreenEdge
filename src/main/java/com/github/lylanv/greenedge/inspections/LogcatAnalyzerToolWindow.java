@@ -160,6 +160,7 @@ public class LogcatAnalyzerToolWindow {
             if(AdbUtils.isAdbAvailable()){
                 clearGraph = false;
                 try {
+                    System.out.println("[LogcatAnalyzerToolWindow -> handleBuildSuccessEvent$ filling the graphs started ...");
                     fetchBatteryLevel();
                     fillToolWindowContent();
                 }catch (Exception e){
@@ -192,11 +193,12 @@ public class LogcatAnalyzerToolWindow {
     @Subscribe
     public void handleApplicationStartedEvent(ApplicationStartedEvent event) {
         if (event.getApplicationStarted()){
-            //System.out.println("[LogcatAnalyzerToolWindow -> handleBuildSuccessEvent$ Build successful");
+            System.out.println("[LogcatAnalyzerToolWindow -> handleApplicationStartedEvent$ Build successful");
             //buildSucceeded = true;
             if(AdbUtils.isAdbAvailable()){
                 clearGraph = false;
                 try {
+                    System.out.println("[LogcatAnalyzerToolWindow -> handleApplicationStartedEvent$ filling the graphs started ...");
                     fetchBatteryLevel();
                     fillToolWindowContent();
                 }catch (Exception e){
@@ -207,6 +209,7 @@ public class LogcatAnalyzerToolWindow {
 
                 clearGraph = false;
                 try {
+                    System.out.println("[LogcatAnalyzerToolWindow -> handleApplicationStartedEvent$ filling the graphs started ...");
                     fetchBatteryLevel();
                     fillToolWindowContent();
                 }catch (Exception e){

@@ -83,6 +83,7 @@ public class LogCatReader implements Runnable {
             //Process logcatProcess = Runtime.getRuntime().exec("adb logcat");
             Process logcatProcess = AdbUtils.getLogCatFile();
             if (logcatProcess != null) {
+                System.out.println("[GreenEdge -> LogCatReader$ Logcat is not null. run LogCatReader");
                 BufferedReader logcatReader = new BufferedReader(new InputStreamReader(logcatProcess.getInputStream()));
                 String line;
                 while ((line = logcatReader.readLine()) != null && running) {

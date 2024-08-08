@@ -11,7 +11,6 @@ public class AndroidProjectBuildListener implements BuildListener {
         if (buildStatus.getStatus() == ProjectSystemBuildManager.BuildStatus.SUCCESS){
             System.out.println("Build completed successfully");
             EventBusManager.post(new BuildSuccessEvent(true));
-
         }
     }
 
